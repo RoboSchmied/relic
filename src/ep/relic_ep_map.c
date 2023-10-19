@@ -355,6 +355,7 @@ void ep_map_swift(ep_t p, const uint8_t *msg, size_t len) {
 			/* Multiply by cofactor. */
 			p->coord = JACOB;
 			ep_norm(p, p);
+			ep_mul_cof(p, p);
 			return;
 			
 			/* Compute t^2 = 3c*sqrt(a)*(2c^3*x^6 - 3*c^2*x^4 - 3*c*x^2 + 2).*/
