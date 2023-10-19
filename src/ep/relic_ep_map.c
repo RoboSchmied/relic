@@ -240,11 +240,12 @@ void ep_map_swift(ep_t p, const uint8_t *msg, size_t len) {
 	/* enough space for two field elements plus extra bytes for uniformity */
 	const size_t len_per_elm = (FP_PRIME + ep_param_level() + 7) / 8;
 	uint8_t s, *pseudo_random_bytes = RLC_ALLOCA(uint8_t, 2 * len_per_elm + 1);
-	fp_t c, t, u, v, w, y, x1, y1, z1;
+	fp_t a, c, t, u, v, w, y, x1, y1, z1;
 	ctx_t *ctx = core_get();
 	bn_t k;
 
 	bn_null(k);
+	fp_null(a);
 	fp_null(c);
 	fp_null(t);
 	fp_null(u);
@@ -257,6 +258,7 @@ void ep_map_swift(ep_t p, const uint8_t *msg, size_t len) {
 
 	RLC_TRY {
 		bn_new(k);
+		fp_new(a);
 		fp_new(c);
 		fp_new(t);
 		fp_new(u);
@@ -279,6 +281,81 @@ void ep_map_swift(ep_t p, const uint8_t *msg, size_t len) {
 		if ((ep_curve_opt_b() == RLC_ZERO) && (ctx->mod8 == 1)) {
 			/* This is the approach due to Koshelev introduced in
 			 * https://eprint.iacr.org/2021/1034.pdf */
+
+			/* Compute c = 3*a^2, t^2 = 6a(9u^5 − 14au^3 + 3cu).*/
+			fp_copy(a, ep_curve_get_a());
+			fp_neg(a, a);
+			fp_sqr(c, a);
+			fp_dbl(t, c);
+			fp_add(c, c, t);
+			fp_dbl(t, c);
+			fp_add(t, t, c);
+			fp_mul(t, t, u);
+
+			fp_sqr(v, u);
+			fp_mul(w, v, u);
+			fp_mul(x1, w, a);
+			fp_mul_dig(x1, x1, 14);
+			fp_sub(t, t, x1);
+
+			fp_mul(w, w, v);
+			fp_dbl(x1, w);
+			fp_add(w, w, x1);
+			fp_dbl(x1, w);
+			fp_add(w, w, x1);
+			fp_add(t, t, w);
+			fp_mul(t, t, a);
+			fp_dbl(t, t);
+			fp_dbl(x1, t);
+			fp_add(t, t, x1);
+			dig_t c1 = fp_is_sqr(t);
+			/* If t is not square, compute u = a/u, t = a*sqrt(a*t)/u^3*/
+			fp_inv(x1, u);
+			fp_mul(y1, t, a);
+			/* If t is a square, extract its square root. */
+			dv_copy_cond(t, y1, RLC_FP_DIGS, !c1);
+			fp_srt(t, t);
+			fp_mul(y1, t, a);
+			fp_sqr(y, x1);
+			fp_mul(y, y, x1);
+			fp_mul(y1, y1, y);
+			fp_mul(x1, x1, a);
+			dv_copy_cond(u, x1, RLC_FP_DIGS, !c1);
+			dv_copy_cond(t, y1, RLC_FP_DIGS, !c1);
+
+			/* Compute x = 2^4*i*3*a^2*u / (3*(3*u^2 - a))^2. */
+			fp_copy(y, ctx->ep_map_c[6]);
+			fp_mul(c, c, u);
+			fp_mul(x1, c, y);
+			fp_dbl(x1, x1);
+			fp_dbl(x1, x1);
+			fp_dbl(x1, x1);
+			fp_dbl(p->x, x1);
+			fp_sqr(v, u);
+			fp_dbl(z1, v);
+			fp_add(z1, z1, v);
+			fp_sub(z1, z1, a);
+			fp_dbl(p->z, z1);
+			fp_add(p->z, p->z, z1);
+
+			/* Compute y = 3*2*(i-1)*a*(3^2*u^2 + a)*t / (3*(3*u^2 - a))^3. */
+			fp_sub_dig(y, y, 1);
+			fp_mul(y1, y, a);
+			fp_dbl(y1, y1);
+			fp_dbl(p->y, y1);
+			fp_add(p->y, p->y, y1);
+			fp_mul(p->y, p->y, t);
+			fp_dbl(y1, v);
+			fp_add(y1, y1, v);
+			fp_dbl(v, y1);
+			fp_add(y1, y1, v);
+			fp_add(y1, y1, a);
+			fp_mul(p->y, p->y, y1);
+
+			/* Multiply by cofactor. */
+			p->coord = JACOB;
+			ep_norm(p, p);
+			return;
 			
 			/* Compute t^2 = 3c*sqrt(a)*(2c^3*x^6 - 3*c^2*x^4 - 3*c*x^2 + 2).*/
 			/* Compute w = 3*c. */
@@ -310,7 +387,7 @@ void ep_map_swift(ep_t p, const uint8_t *msg, size_t len) {
 			/* Assume a = 1 for simplicitly. */
 			fp_mul(t, t, w);
 			fp_mul(t, t, ctx->ep_map_c[6]);
-			dig_t c1 = fp_is_sqr(t);
+			c1 = fp_is_sqr(t);
 			/* If t is not square, compute u = 1/(uc), t = sqrt(t/c)/(c*u^3)*/
 			fp_inv(v, c);
 			fp_inv(x1, u);
@@ -564,6 +641,7 @@ void ep_map_swift(ep_t p, const uint8_t *msg, size_t len) {
 	}
 	RLC_FINALLY {
 		bn_free(k);
+		fp_free(a);
 		fp_free(c);
 		fp_free(t);
 		fp_free(u);
