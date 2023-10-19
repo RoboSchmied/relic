@@ -201,8 +201,8 @@ static void ep_curve_set_map(void) {
 			fp_exp(c4, c4, t);
 			fp_inv(c4, c4);
 			fp_exp_dig(c5, c5, r);
-			/* Compute 1/sqrt(-1) as well. */
-			fp_set_dig(c6, 1);
+			/* Compute 1/sqrt(-3) as well. */
+			fp_set_dig(c6, 3);
 			fp_neg(c6, c6);
 			fp_srt(c6, c6);
 		}

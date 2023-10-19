@@ -581,16 +581,19 @@ void fp_param_set(int param) {
 				break;
 #elif FP_PRIME == 766
 			case K16_766:
-				/* u = 2^78-2^76-2^28+2^14+2^7+1 */
+				/* u = -2^{78}+2^{76}+2^{72}+2^{23}+2^{13}-2^5-1. */
 				bn_set_2b(t0, 78);
 				bn_set_2b(t1, 76);
 				bn_sub(t0, t0, t1);
-				bn_set_2b(t1, 28);
+				bn_set_2b(t1, 72);
 				bn_sub(t0, t0, t1);
-				bn_set_2b(t1, 14);
-				bn_add(t0, t0, t1);
-				bn_add_dig(t0, t0, 128);
+				bn_set_2b(t1, 23);
+				bn_sub(t0, t0, t1);
+				bn_set_2b(t1, 13);
+				bn_sub(t0, t0, t1);
+				bn_add_dig(t0, t0, 32);
 				bn_add_dig(t0, t0, 1);
+				bn_neg(t0, t0);
 				fp_prime_set_pairf(t0, EP_K16);
 				break;
 #elif FP_PRIME == 1024

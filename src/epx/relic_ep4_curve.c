@@ -158,7 +158,7 @@
 /** @{ */
 #define K16_P766_A0		"0"
 #define K16_P766_A1		"0"
-#define K16_P766_A2		"1"
+#define K16_P766_A2		"3"
 #define K16_P766_A3		"0"
 #define K16_P766_B0		"0"
 #define K16_P766_B1		"0"
